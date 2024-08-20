@@ -1,116 +1,10 @@
-/*
-fn select_http_method() -> HttpMethod{
-    println!("Select an HTTP method:");
-    println!("1. POST");
-    println!("2. GET");
-    println!("3. PATCH");
-    println!("4. DELETE");
-    println!("5. PUT");
-    
-    loop {
-        print!("Enter the number of your choice: ");
-        io::stdout().flush().unwrap();
-        
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("Failed to read line");
-        
-        match input.trim() {
-            "1" => return HttpMethod::POST,
-            "2" => return HttpMethod::GET,
-            "3" => return HttpMethod::PATCH,
-            "4" => return HttpMethod::DELETE,
-            "5" => return HttpMethod::PUT,
-            _ => println!("Invalid choice. Please try again."),
-        }
-    }
-}
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use reqwest::{Client, Response};
 
-fn enter_url() -> String {
-    println!("Enter URL:");
-    io::stdout().flush().unwrap();
-    let mut url = String::new();
-    io::stdin().read_line(&mut url).expect("failed to read");
+use crate::enums::http_method::HttpMethod;
+use crate::structs::http_request::HttpRequest;
 
-    url
-}
-
-fn enter_headers() -> HashMap<String, String>{
-    let mut headers = HashMap::new();
-    println!("Enter headers (leave blank to finish):");
-    loop {
-        print!("Enter header key (or press Enter to finish): ");
-        io::stdout().flush().unwrap();
-        let mut key = String::new();
-        io::stdin().read_line(&mut key).expect("Failed to read line");
-        let key = key.trim();
-        
-        if key.is_empty() {
-            break;
-        }
-        
-        print!("Enter header value: ");
-        io::stdout().flush().unwrap();
-        let mut value = String::new();
-        io::stdin().read_line(&mut value).expect("Failed to read line");
-        let value = value.trim().to_string();
-        
-        headers.insert(key.to_string(), value);
-    }
-    headers
-}
-
-fn enter_query_params() -> HashMap<String, String>{
-    let mut params = HashMap::new();
-    println!("Enter query parameters (leave blank to finish):");
-    loop {
-        print!("Enter parameter key (or press Enter to finish): ");
-        io::stdout().flush().unwrap();
-        let mut key = String::new();
-        io::stdin().read_line(&mut key).expect("Failed to read line");
-        let key = key.trim();
-        
-        if key.is_empty() {
-            break;
-        }
-        
-        print!("Enter parameter value: ");
-        io::stdout().flush().unwrap();
-        let mut value = String::new();
-        io::stdin().read_line(&mut value).expect("Failed to read line");
-        let value = value.trim().to_string();
-        
-        params.insert(key.to_string(), value);
-    }
-    params
-}
-
-fn enter_body() -> HashMap<String, String>{
-    let mut body = HashMap::new();
-    println!("Enter body key-value pairs (leave blank to finish):");
-    loop {
-        print!("Enter body key (or press Enter to finish): ");
-        io::stdout().flush().unwrap();
-        let mut key = String::new();
-        io::stdin().read_line(&mut key).expect("Failed to read line");
-        let key = key.trim();
-        
-        if key.is_empty() {
-            break;
-        }
-        
-        print!("Enter body value: ");
-        io::stdout().flush().unwrap();
-        let mut value = String::new();
-        io::stdin().read_line(&mut value).expect("Failed to read line");
-        let value = value.trim().to_string();
-        
-        body.insert(key.to_string(), value);
-    }
-    body
-}
-
-
-async fn handle_req(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>>{
+pub async fn handle_req(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>>{
     match req.method {
         HttpMethod::GET => handle_get(req).await,
         HttpMethod::POST => handle_post(req).await,
@@ -240,4 +134,3 @@ fn handle_default(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>> {
         format!("Unsupported HTTP method: {:?}", req.method)
     )))
 }
-*/
