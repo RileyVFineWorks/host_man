@@ -1,7 +1,7 @@
 mod enums;
 mod structs;
 mod services;
-use std::{clone, collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use egui::mutex::Mutex;
 use enums::http_method::HttpMethod;
 use structs::http_request::HttpRequest;
