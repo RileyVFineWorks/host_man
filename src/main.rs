@@ -24,6 +24,7 @@ struct HostMan {
 
 impl HostMan {
     fn new () -> Self {
+        // customize egui here
         Self {
             request: HttpRequest::default(),
             runtime: Runtime::new().expect("Failed to create Tokio runtime"),
