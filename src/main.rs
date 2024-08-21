@@ -2,6 +2,7 @@ mod enums;
 mod structs;
 mod services;
 use std::{collections::HashMap, sync::Arc};
+mod tests;
 use egui::mutex::Mutex;
 use enums::http_method::HttpMethod;
 use structs::http_request::HttpRequest;
@@ -10,7 +11,7 @@ use tokio::runtime::Runtime;
 
 fn main() {
     let native_options = eframe::NativeOptions::default();
-    eframe::run_native("HostMan", native_options, Box::new(|cc| Ok(Box::new(HostMan::new(cc))))).unwrap();
+    eframe::run_native("HostMan", native_options, Box::new(|_cc| Ok(Box::new(HostMan::new())))).unwrap();
 }
 
 struct HostMan {
@@ -22,8 +23,7 @@ struct HostMan {
 }
 
 impl HostMan {
-    fn new (_cc: &eframe::CreationContext<'_>) -> Self {
-        // customize egui here
+    fn new () -> Self {
         Self {
             request: HttpRequest::default(),
             runtime: Runtime::new().expect("Failed to create Tokio runtime"),
