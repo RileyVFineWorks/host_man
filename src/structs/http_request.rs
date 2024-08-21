@@ -3,7 +3,7 @@ use crate::enums::http_method::HttpMethod;
 
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HttpRequest {
     pub url: String,
     pub method: HttpMethod,

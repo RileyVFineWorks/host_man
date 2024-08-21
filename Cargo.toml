@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+eframe = "0.28.1"
+egui = "0.28.1"
 reqwest = { version="0.12.7", features = ["default", "blocking", "json" ] }
 serde = "1.0.208"
+serde_json = "1.0.125"
 tokio = { version = "1.39.3", features = ["full"] }

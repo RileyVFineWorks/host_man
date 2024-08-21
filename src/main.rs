@@ -1,266 +1,168 @@
 mod enums;
 mod structs;
-use std::{collections::HashMap, io::{self, Write}};
+mod services;
+use std::{collections::HashMap, sync::Arc};
+use egui::mutex::Mutex;
 use enums::http_method::HttpMethod;
-use reqwest::{header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE, AUTHORIZATION}, Client, Error, Response, StatusCode};
 use structs::http_request::HttpRequest;
+use services::http_service::handle_req;
+use tokio::runtime::Runtime;
 
-#[tokio::main]
-async fn main() {
-    let mut request: HttpRequest = HttpRequest::default();
-    println!("Hello, Welcome to Hostman");
-    println!("The easy to use terminal or GUI Fetch Client");
-    println!("Begin by Selecting Your Http Method");
-
-    let method = select_http_method();
-    request.method = method;
-    let request_url = enter_url();
-    request.url = request_url;
-    request.headers = enter_headers();
-    request.query_params = enter_query_params();
-    request.body = enter_body();
-
-    handle_req(&request).await.unwrap();
+fn main() {
+    let native_options = eframe::NativeOptions::default();
+    eframe::run_native("HostMan", native_options, Box::new(|cc| Ok(Box::new(HostMan::new(cc))))).unwrap();
 }
 
-fn select_http_method() -> HttpMethod{
-    println!("Select an HTTP method:");
-    println!("1. POST");
-    println!("2. GET");
-    println!("3. PATCH");
-    println!("4. DELETE");
-    println!("5. PUT");
+struct HostMan {
+    request: HttpRequest,
+    runtime: Runtime,
+    is_loading: bool,
+    response: Arc<Mutex<String>>,
+    pending_request: Option<HttpRequest>,
+}
+
+impl HostMan {
+    fn new (_cc: &eframe::CreationContext<'_>) -> Self {
+        // customize egui here
+        Self {
+            request: HttpRequest::default(),
+            runtime: Runtime::new().expect("Failed to create Tokio runtime"),
+            is_loading: false,
+            response: Arc::new(Mutex::new(String::new())),
+            pending_request: None,
+        }
+    }
+
+    fn send_request(&mut self) {
+        if !self.is_loading {
+            self.is_loading = true;
+            self.pending_request = Some(self.request.clone());
+        }
+    }
+
+    fn check_pending_request(&mut self, ctx: &egui::Context) {
+        if let Some(request) = self.pending_request.take() {
+            let response_clone = self.response.clone();
+            let ctx = ctx.clone();
     
-    loop {
-        print!("Enter the number of your choice: ");
-        io::stdout().flush().unwrap();
-        
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("Failed to read line");
-        
-        match input.trim() {
-            "1" => return HttpMethod::POST,
-            "2" => return HttpMethod::GET,
-            "3" => return HttpMethod::PATCH,
-            "4" => return HttpMethod::DELETE,
-            "5" => return HttpMethod::PUT,
-            _ => println!("Invalid choice. Please try again."),
+            self.runtime.spawn(async move {
+                let result = handle_req(&request).await;
+                let mut response = response_clone.lock();
+                *response = match result {
+                    Ok(x) => format!("Status {:?} \nResponse: {:?}", x.0, serde_json::to_string_pretty(&x.1).unwrap()),
+                    Err(e) => format!("Error: {}", e),
+                };
+                ctx.request_repaint();
+            });
         }
     }
 }
 
-fn enter_url() -> String {
-    println!("Enter URL:");
-    io::stdout().flush().unwrap();
-    let mut url = String::new();
-    io::stdin().read_line(&mut url).expect("failed to read");
+impl eframe::App for HostMan {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.check_pending_request(ctx);
 
-    url
-}
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("Hello From Hostman");
 
-fn enter_headers() -> HashMap<String, String>{
-    let mut headers = HashMap::new();
-    println!("Enter headers (leave blank to finish):");
-    loop {
-        print!("Enter header key (or press Enter to finish): ");
-        io::stdout().flush().unwrap();
-        let mut key = String::new();
-        io::stdin().read_line(&mut key).expect("Failed to read line");
-        let key = key.trim();
-        
-        if key.is_empty() {
-            break;
+            ui.horizontal(|ui| {
+                ui.label("Select HTTP Method");
+                egui::ComboBox::from_label("")
+                .selected_text(format!("{:?}", self.request.method))
+                .show_ui(ui, |ui| {
+                ui.selectable_value(&mut self.request.method, HttpMethod::GET, "GET");
+                ui.selectable_value(&mut self.request.method, HttpMethod::POST, "POST");
+                ui.selectable_value(&mut self.request.method, HttpMethod::PATCH, "PATCH");
+                ui.selectable_value(&mut self.request.method, HttpMethod::DELETE, "DELETE");
+                ui.selectable_value(&mut self.request.method, HttpMethod::PUT, "PUT");
+            });
+        });
+            ui.horizontal(|ui| {
+                ui.label("Enter URL:");
+                ui.text_edit_singleline(&mut self.request.url);
+            });
+            ui.collapsing("Headers", |ui| {
+                let mut headers = self.request.headers.clone();
+                if self.key_value_pair_editor(ui, &mut headers, "Headers") {
+                    self.request.headers = headers;
+                }
+            });
+            ui.collapsing("Query Parameters", |ui| {
+                let mut params = self.request.query_params.clone();
+                if self.key_value_pair_editor(ui, &mut params, "Query Params") {
+                    self.request.query_params = params;
+                }
+            });
+            ui.collapsing("Body", |ui| {
+                let mut body = self.request.body.clone();
+                if self.key_value_pair_editor(ui, &mut body, "Query Params") {
+                    self.request.body = body;
+                }
+            });
+            ui.horizontal(|ui| {
+                if ui.button("Send Request").clicked() {
+                    self.send_request();
+                }
+            });
+
+            if self.is_loading {
+                ui.spinner();
+            } else {
+                let response = self.response.lock();
+                ui.label(&*response);
+            }
+        });
+            if self.is_loading {
+            let response = self.response.lock();
+            if !response.is_empty() {
+                self.is_loading = false;
+            }
         }
-        
-        print!("Enter header value: ");
-        io::stdout().flush().unwrap();
-        let mut value = String::new();
-        io::stdin().read_line(&mut value).expect("Failed to read line");
-        let value = value.trim().to_string();
-        
-        headers.insert(key.to_string(), value);
     }
-    headers
 }
 
-fn enter_query_params() -> HashMap<String, String>{
-    let mut params = HashMap::new();
-    println!("Enter query parameters (leave blank to finish):");
-    loop {
-        print!("Enter parameter key (or press Enter to finish): ");
-        io::stdout().flush().unwrap();
-        let mut key = String::new();
-        io::stdin().read_line(&mut key).expect("Failed to read line");
-        let key = key.trim();
-        
-        if key.is_empty() {
-            break;
+
+// way to modify key value pairs
+impl HostMan {
+    fn key_value_pair_editor(&mut self, ui: &mut egui::Ui, map: &mut HashMap<String, String>, label: &str) -> bool {
+        let mut changed = false;
+        let mut to_remove = None;
+        let mut to_edit = Vec::new();
+
+        for (key, value) in map.iter() {
+            ui.horizontal(|ui| {
+                let mut key_edit = key.clone();
+                let key_changed = ui.text_edit_singleline(&mut key_edit).changed();
+                
+                let mut value_edit = value.clone();
+                let value_changed = ui.text_edit_singleline(&mut value_edit).changed();
+                
+                if key_changed || value_changed {
+                    to_edit.push((key.clone(), key_edit, value_edit));
+                    changed = true;
+                }
+
+                if ui.button("X").clicked() {
+                    to_remove = Some(key.clone());
+                    changed = true;
+                }
+            });
         }
-        
-        print!("Enter parameter value: ");
-        io::stdout().flush().unwrap();
-        let mut value = String::new();
-        io::stdin().read_line(&mut value).expect("Failed to read line");
-        let value = value.trim().to_string();
-        
-        params.insert(key.to_string(), value);
-    }
-    params
-}
 
-fn enter_body() -> HashMap<String, String>{
-    let mut body = HashMap::new();
-    println!("Enter body key-value pairs (leave blank to finish):");
-    loop {
-        print!("Enter body key (or press Enter to finish): ");
-        io::stdout().flush().unwrap();
-        let mut key = String::new();
-        io::stdin().read_line(&mut key).expect("Failed to read line");
-        let key = key.trim();
-        
-        if key.is_empty() {
-            break;
+        if let Some(key) = to_remove {
+            map.remove(&key);
         }
-        
-        print!("Enter body value: ");
-        io::stdout().flush().unwrap();
-        let mut value = String::new();
-        io::stdin().read_line(&mut value).expect("Failed to read line");
-        let value = value.trim().to_string();
-        
-        body.insert(key.to_string(), value);
+
+        for (old_key, new_key, new_value) in to_edit {
+            map.remove(&old_key);
+            map.insert(new_key, new_value);
+        }
+
+        if ui.button(format!("Add {}", label)).clicked() {
+            map.insert(String::new(), String::new());
+            changed = true;
+        }
+
+        changed
     }
-    body
-}
-
-
-async fn handle_req(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>>{
-    match req.method {
-        HttpMethod::GET => handle_get(req).await,
-        HttpMethod::POST => handle_post(req).await,
-        HttpMethod::DELETE => handle_delete(req).await,
-        HttpMethod::PATCH => handle_patch(req).await,
-        HttpMethod::PUT => handle_put(req).await,
-        _ => handle_default(req)
-    }
-}
-
-async fn handle_get(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::new();
-    let mut headers = HeaderMap::new();
-    
-    for (key, value) in &req.headers {
-        let header_name = HeaderName::from_bytes(key.as_bytes())?;
-        let header_value = HeaderValue::from_str(value)?;
-        headers.insert(header_name, header_value);
-    }
-
-    // Ensure the Authorization header is set correctly
-    if let Some(auth_value) = req.headers.get("Authorization") {
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(auth_value)?);
-    }
-
-    let response = client.get(&req.url)
-        .headers(headers)
-        .query(&req.query_params)
-        .send()
-        .await?;
-
-    println!("Status: {}", response.status());
-    println!("Headers: {:#?}", response.headers());
-    println!("Body: {}", response.text().await?);
-
-    Ok(())
-}
-
-async fn handle_post(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>>{
-    let client = Client::new();
-    let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/x-www-form-urlencoded"));
-    
-    let mut form_data = Vec::new();
-    for (key, value) in &req.body {
-        form_data.push((key, value));
-    }
-
-    let response = client.post(&req.url)
-        .headers(headers)
-        .form(&form_data)
-        .send()
-        .await?;
-
-    println!("Status: {}", response.status());
-    println!("Headers: {:#?}", response.headers());
-    println!("Body: {}", response.text().await?);
-
-    Ok(())
-}
-
-async  fn handle_put(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>>{
-    let client = Client::new();
-    let mut headers = HeaderMap::new();
-    for (key, value) in &req.query_params {
-        headers.insert(HeaderName::from_bytes(key.as_bytes())?, HeaderValue::from_str(value)?);
-    }
-
-    let response = client.put(&req.url)
-        .headers(headers)
-        .json(&req.body)
-        .query(&req.query_params)
-        .send()
-        .await?;
-
-    println!("Status: {}", response.status());
-    println!("Headers: {:#?}", response.headers());
-    println!("Body: {}", response.text().await?);
-
-    Ok(())
-}
-
-async fn handle_patch(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>>{
-    let client = Client::new();
-    let mut headers = HeaderMap::new();
-    for (key, value) in &req.query_params {
-        headers.insert(HeaderName::from_bytes(key.as_bytes())?, HeaderValue::from_str(value)?);
-    }
-
-    let response = client.patch(&req.url)
-        .headers(headers)
-        .json(&req.body)
-        .query(&req.query_params)
-        .send()
-        .await?;
-
-    println!("Status: {}", response.status());
-    println!("Headers: {:#?}", response.headers());
-    println!("Body: {}", response.text().await?);
-
-    Ok(())
-}
-
-async fn handle_delete(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>>{
-    let client: Client = Client::new();
-    let mut headers : HeaderMap= HeaderMap::new();
-    for (key, value) in &req.query_params {
-        headers.insert(HeaderName::from_bytes(key.as_bytes())?, HeaderValue::from_str(value)?);
-    }
-
-    let response : Response = client.delete(&req.url)
-        .headers(headers)
-        .query(&req.query_params)
-        .send()
-        .await?;
-
-    println!("Status: {}", response.status());
-    println!("Headers: {:#?}", response.headers());
-    println!("Body: {}", response.text().await?);
-
-    Ok(())
-}
-
-fn handle_default(req: &HttpRequest) -> Result<(), Box<dyn std::error::Error>> {
-    Err(Box::new(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        format!("Unsupported HTTP method: {:?}", req.method)
-    )))
 }
