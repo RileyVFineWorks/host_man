@@ -39,7 +39,6 @@ fn test_update_request() {
 
 #[test]
 fn test_key_value_pair_editor() {
-    let mut hostman = HostMan::new();
     let mut map = HashMap::new();
     map.insert("key1".to_string(), "value1".to_string());
     
