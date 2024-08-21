@@ -49,7 +49,7 @@ impl HostMan {
                 let result = handle_req(&request).await;
                 let mut response = response_clone.lock();
                 *response = match result {
-                    Ok(_) => "Request successful".to_string(),
+                    Ok(x) => format!("Status {:?} \nResponse: {:?}", x.0, serde_json::to_string_pretty(&x.1).unwrap()),
                     Err(e) => format!("Error: {}", e),
                 };
                 ctx.request_repaint();

@@ -1,10 +1,12 @@
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::{Client, StatusCode};
+use serde_json::Value;
 
 use crate::enums::http_method::HttpMethod;
 use crate::structs::http_request::HttpRequest;
 
-pub async fn handle_req(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn std::error::Error>> {
+pub async fn handle_req(req: &HttpRequest) -> Result<(StatusCode, Value), Box<dyn std::error::Error>> {
+    // 
     match req.method {
         HttpMethod::GET => handle_get(req).await,
         HttpMethod::POST => handle_post(req).await,
@@ -14,7 +16,7 @@ pub async fn handle_req(req: &HttpRequest) -> Result<(StatusCode, String), Box<d
     }
 }
 
-async fn handle_get(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn std::error::Error>> {
+async fn handle_get(req: &HttpRequest) -> Result<(StatusCode, Value), Box<dyn std::error::Error>> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     
@@ -36,11 +38,12 @@ async fn handle_get(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn s
 
     let status = response.status();
     let body = response.text().await?;
+    let v: Value = serde_json::from_str(&body)?;
 
-    Ok((status, body))
+    Ok((status, v))
 }
 
-async fn handle_post(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn std::error::Error>> {
+async fn handle_post(req: &HttpRequest) -> Result<(StatusCode, Value), Box<dyn std::error::Error>> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/x-www-form-urlencoded"));
@@ -58,11 +61,12 @@ async fn handle_post(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn 
 
     let status = response.status();
     let body = response.text().await?;
+    let v: Value = serde_json::from_str(&body)?;
 
-    Ok((status, body))
+    Ok((status, v))
 }
 
-async fn handle_put(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn std::error::Error>> {
+async fn handle_put(req: &HttpRequest) -> Result<(StatusCode, Value), Box<dyn std::error::Error>> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     for (key, value) in &req.query_params {
@@ -78,11 +82,12 @@ async fn handle_put(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn s
 
     let status = response.status();
     let body = response.text().await?;
+    let v: Value = serde_json::from_str(&body)?;
 
-    Ok((status, body))
+    Ok((status, v))
 }
 
-async fn handle_patch(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn std::error::Error>> {
+async fn handle_patch(req: &HttpRequest) -> Result<(StatusCode, Value), Box<dyn std::error::Error>> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     for (key, value) in &req.query_params {
@@ -98,11 +103,12 @@ async fn handle_patch(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn
 
     let status = response.status();
     let body = response.text().await?;
+    let v: Value = serde_json::from_str(&body)?;
 
-    Ok((status, body))
+    Ok((status, v))
 }
 
-async fn handle_delete(req: &HttpRequest) -> Result<(StatusCode, String), Box<dyn std::error::Error>> {
+async fn handle_delete(req: &HttpRequest) -> Result<(StatusCode, Value), Box<dyn std::error::Error>> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     for (key, value) in &req.query_params {
@@ -117,6 +123,7 @@ async fn handle_delete(req: &HttpRequest) -> Result<(StatusCode, String), Box<dy
 
     let status = response.status();
     let body = response.text().await?;
+    let v: Value = serde_json::from_str(&body)?;
 
-    Ok((status, body))
+    Ok((status, v))
 }
