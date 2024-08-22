@@ -64,56 +64,92 @@ impl eframe::App for HostMan {
         self.check_pending_request(ctx);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Hello From Hostman");
+            ui.vertical_centered(|ui| {
+                ui.heading("HostMan - HTTP Request Tool")
+                    .on_hover_text("Send and manage HTTP requests easily");
+            });
 
-            ui.horizontal(|ui| {
-                ui.label("Select HTTP Method");
-                egui::ComboBox::from_label("")
-                .selected_text(format!("{:?}", self.request.method))
-                .show_ui(ui, |ui| {
-                ui.selectable_value(&mut self.request.method, HttpMethod::GET, "GET");
-                ui.selectable_value(&mut self.request.method, HttpMethod::POST, "POST");
-                ui.selectable_value(&mut self.request.method, HttpMethod::PATCH, "PATCH");
-                ui.selectable_value(&mut self.request.method, HttpMethod::DELETE, "DELETE");
-                ui.selectable_value(&mut self.request.method, HttpMethod::PUT, "PUT");
-            });
-        });
-            ui.horizontal(|ui| {
-                ui.label("Enter URL:");
-                ui.text_edit_singleline(&mut self.request.url);
-            });
-            ui.collapsing("Headers", |ui| {
-                let mut headers = self.request.headers.clone();
-                if self.key_value_pair_editor(ui, &mut headers, "Headers") {
-                    self.request.headers = headers;
-                }
-            });
-            ui.collapsing("Query Parameters", |ui| {
-                let mut params = self.request.query_params.clone();
-                if self.key_value_pair_editor(ui, &mut params, "Query Params") {
-                    self.request.query_params = params;
-                }
-            });
-            ui.collapsing("Body", |ui| {
-                let mut body = self.request.body.clone();
-                if self.key_value_pair_editor(ui, &mut body, "Query Params") {
-                    self.request.body = body;
-                }
-            });
-            ui.horizontal(|ui| {
-                if ui.button("Send Request").clicked() {
+            ui.add_space(10.0);
+
+            egui::Grid::new("http_request_grid")
+                .num_columns(2)
+                .spacing([10.0, 10.0])
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("HTTP Method:");
+                    egui::ComboBox::from_label("")
+                        .selected_text(format!("{:?}", self.request.method))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.request.method, HttpMethod::GET, "GET");
+                            ui.selectable_value(&mut self.request.method, HttpMethod::POST, "POST");
+                            ui.selectable_value(&mut self.request.method, HttpMethod::PATCH, "PATCH");
+                            ui.selectable_value(&mut self.request.method, HttpMethod::DELETE, "DELETE");
+                            ui.selectable_value(&mut self.request.method, HttpMethod::PUT, "PUT");
+                        });
+                    ui.end_row();
+
+                    ui.label("URL:");
+                    ui.add(egui::TextEdit::singleline(&mut self.request.url).hint_text("Enter URL here"));
+                    ui.end_row();
+                });
+
+            ui.add_space(10.0);
+
+            egui::CollapsingHeader::new("Headers")
+                .default_open(true)
+                .show(ui, |ui| {
+                    let mut headers = self.request.headers.clone();
+                    if self.key_value_pair_editor(ui, &mut headers, "Headers") {
+                        self.request.headers = headers;
+                    }
+                });
+
+            egui::CollapsingHeader::new("Query Parameters")
+                .default_open(true)
+                .show(ui, |ui| {
+                    let mut params = self.request.query_params.clone();
+                    if self.key_value_pair_editor(ui, &mut params, "Query Params") {
+                        self.request.query_params = params;
+                    }
+                });
+
+            egui::CollapsingHeader::new("Body")
+                .default_open(true)
+                .show(ui, |ui| {
+                    let mut body = self.request.body.clone();
+                    if self.key_value_pair_editor(ui, &mut body, "Body") {
+                        self.request.body = body;
+                    }
+                });
+
+            ui.add_space(10.0);
+
+            ui.vertical_centered(|ui| {
+                if ui.add_sized([120.0, 30.0], egui::Button::new("Send Request")).clicked() {
                     self.send_request();
                 }
             });
 
+            ui.add_space(20.0);
+
             if self.is_loading {
-                ui.spinner();
+                ui.vertical_centered(|ui| {
+                    ui.add(egui::Spinner::new().size(32.0));
+                    ui.label("Sending request...");
+                });
             } else {
-                let response = self.response.lock();
-                ui.label(&*response);
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    let response = self.response.lock();
+                    ui.add(
+                        egui::TextEdit::multiline(&mut response.as_str())
+                            .desired_width(f32::INFINITY)
+                            .font(egui::TextStyle::Monospace)
+                    );
+                });
             }
         });
-            if self.is_loading {
+
+        if self.is_loading {
             let response = self.response.lock();
             if !response.is_empty() {
                 self.is_loading = false;
@@ -130,25 +166,30 @@ impl HostMan {
         let mut to_remove = None;
         let mut to_edit = Vec::new();
 
-        for (key, value) in map.iter() {
-            ui.horizontal(|ui| {
-                let mut key_edit = key.clone();
-                let key_changed = ui.text_edit_singleline(&mut key_edit).changed();
-                
-                let mut value_edit = value.clone();
-                let value_changed = ui.text_edit_singleline(&mut value_edit).changed();
-                
-                if key_changed || value_changed {
-                    to_edit.push((key.clone(), key_edit, value_edit));
-                    changed = true;
-                }
+        egui::Grid::new(format!("{}_grid", label))
+            .num_columns(3)
+            .spacing([5.0, 5.0])
+            .striped(true)
+            .show(ui, |ui| {
+                for (key, value) in map.iter() {
+                    let mut key_edit = key.clone();
+                    let key_changed = ui.add(egui::TextEdit::singleline(&mut key_edit).hint_text("Key")).changed();
+                    
+                    let mut value_edit = value.clone();
+                    let value_changed = ui.add(egui::TextEdit::singleline(&mut value_edit).hint_text("Value")).changed();
+                    
+                    if key_changed || value_changed {
+                        to_edit.push((key.clone(), key_edit, value_edit));
+                        changed = true;
+                    }
 
-                if ui.button("X").clicked() {
-                    to_remove = Some(key.clone());
-                    changed = true;
+                    if ui.button("🗑").clicked() {
+                        to_remove = Some(key.clone());
+                        changed = true;
+                    }
+                    ui.end_row();
                 }
             });
-        }
 
         if let Some(key) = to_remove {
             map.remove(&key);
@@ -159,7 +200,7 @@ impl HostMan {
             map.insert(new_key, new_value);
         }
 
-        if ui.button(format!("Add {}", label)).clicked() {
+        if ui.button(format!("➕ Add {}", label)).clicked() {
             map.insert(String::new(), String::new());
             changed = true;
         }
