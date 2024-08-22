@@ -1,7 +1,16 @@
 # HostMan
-- This is an initial step by step HTTP request builder
-- Mainly built due to frusturation of other RequestBuilders taking too long to install and run
-- To use clone this repository
-- `cd host_man`
-- `cargo run` and get going with your requirements
-- Pending GUI interface and is currently strictly CLI
+- Lightweight and fast Http request builder
+- Contributions Welcome
+
+# Installation
+- Clone the repository
+- `cd host_man` `cargo run`
+- GUI will pop-up 
+
+# Down the Road
+- Looking to build this into distributable releases for Windows/Mac/Linux
+- This currently implements efram/egui and is still using some of the defaults for its appearance
+
+# Purpose
+- Remove bload and load up times that come with other distributed Http request applications
+- Barebones resposne and status codes for easy developmental use
