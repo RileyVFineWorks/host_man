@@ -3,9 +3,13 @@
 - Contributions Welcome
 
 # Installation
-- Clone the repository
+## Clone the repository
 - `cd host_man` `cargo run`
 - GUI will pop-up 
+
+## Download the relase
+- Download the .exe from the releases section
+- Ready to go out the box, only windows compatible currently
 
 # Down the Road
 - Looking to build this into distributable releases for Windows/Mac/Linux
