@@ -3,7 +3,7 @@ mod structs;
 mod services;
 use std::{collections::HashMap, sync::Arc};
 mod tests;
-use egui::mutex::Mutex;
+use egui::{mutex::Mutex, vec2 };
 use enums::http_method::HttpMethod;
 use structs::http_request::HttpRequest;
 use services::http_service::handle_req;
@@ -165,18 +165,26 @@ impl HostMan {
         let mut changed = false;
         let mut to_remove = None;
         let mut to_edit = Vec::new();
+        let text_edit_width = 200.0;
+
 
         egui::Grid::new(format!("{}_grid", label))
-            .num_columns(3)
+            .num_columns(4)
             .spacing([5.0, 5.0])
             .striped(true)
             .show(ui, |ui| {
                 for (key, value) in map.iter() {
                     let mut key_edit = key.clone();
-                    let key_changed = ui.add(egui::TextEdit::singleline(&mut key_edit).hint_text("Key")).changed();
+                    let key_changed = ui.add_sized(
+                        vec2(text_edit_width, 20.0),
+                        egui::TextEdit::singleline(&mut key_edit).hint_text("Key")
+                    ).changed();
                     
                     let mut value_edit = value.clone();
-                    let value_changed = ui.add(egui::TextEdit::singleline(&mut value_edit).hint_text("Value")).changed();
+                    let value_changed = ui.add_sized(
+                        vec2(text_edit_width, 20.0), // Width and height of the value text edit
+                        egui::TextEdit::singleline(&mut value_edit).hint_text("Value")
+                    ).changed();
                     
                     if key_changed || value_changed {
                         to_edit.push((key.clone(), key_edit, value_edit));
