@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 mod enums;
 mod structs;
 mod services;
