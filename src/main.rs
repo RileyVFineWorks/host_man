@@ -9,10 +9,53 @@ use enums::http_method::HttpMethod;
 use structs::http_request::HttpRequest;
 use services::http_service::handle_req;
 use tokio::runtime::Runtime;
+use egui::IconData;
+use egui::ViewportBuilder;
+use eframe::NativeOptions;
+use image::GenericImageView;
+use std::panic;
 
-fn main() {
-    let native_options = eframe::NativeOptions::default();
-    eframe::run_native("HostMan", native_options, Box::new(|_cc| Ok(Box::new(HostMan::new())))).unwrap();
+fn main() -> Result<(), eframe::Error> {
+    // Set up panic hook to print errors
+    panic::set_hook(Box::new(|panic_info| {
+        eprintln!("Panic occurred: {:?}", panic_info);
+    }));
+
+    // Try to load the icon
+    let icon = match image::open("assets/host_man.ico") {
+        Ok(img) => img,
+        Err(e) => {
+            eprintln!("Failed to open icon: {:?}", e);
+            eprintln!("Current directory: {:?}", std::env::current_dir().unwrap_or_default());
+            // Continue without an icon
+            image::DynamicImage::new_rgba8(1, 1)
+        }
+    };
+
+    let (icon_width, icon_height) = icon.dimensions();
+    let icon_rgba = icon.into_rgba8().into_raw();
+
+    let native_options = NativeOptions {
+        viewport: ViewportBuilder::default()
+            .with_icon(IconData {
+                rgba: icon_rgba,
+                width: icon_width,
+                height: icon_height,
+            }),
+        ..Default::default()
+    };
+
+    match eframe::run_native(
+        "HostMan",
+        native_options,
+        Box::new(|_cc| Ok(Box::new(HostMan::new())))
+    ) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            eprintln!("Error running application: {:?}", e);
+            Err(e)
+        }
+    }
 }
 
 struct HostMan {
