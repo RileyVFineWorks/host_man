@@ -11,3 +11,6 @@ serde = "1.0.208"
 serde_json = "1.0.125"
 tokio = { version = "1.39.3", features = ["full"] }
 image ="0.24.7"
+
+[build-dependencies]
+winres = "0.1"

@@ -16,17 +16,16 @@ use image::GenericImageView;
 use std::panic;
 
 fn main() -> Result<(), eframe::Error> {
-    // Set up panic hook to print errors
     panic::set_hook(Box::new(|panic_info| {
         eprintln!("Panic occurred: {:?}", panic_info);
     }));
 
-    // Try to load the icon
-    let icon = match image::open("assets/host_man.ico") {
+    let icon_data = include_bytes!("../assets/host_man.ico");
+
+    let icon = match image::load_from_memory(icon_data) {
         Ok(img) => img,
         Err(e) => {
-            eprintln!("Failed to open icon: {:?}", e);
-            eprintln!("Current directory: {:?}", std::env::current_dir().unwrap_or_default());
+            eprintln!("Failed to load embedded icon: {:?}", e);
             // Continue without an icon
             image::DynamicImage::new_rgba8(1, 1)
         }
