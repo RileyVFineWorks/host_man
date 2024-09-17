@@ -16,5 +16,5 @@
 - This currently implements efram/egui and is still using some of the defaults for its appearance
 
 # Purpose
-- Remove bload and load up times that come with other distributed Http request applications
+- Remove bloat and load up times that come with other distributed Http request applications
 - Barebones resposne and status codes for easy developmental use
